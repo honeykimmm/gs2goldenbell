@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grammar Smart 2 골든벨</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --chalk-white:#F5F0E8;
+  --chalk-dim:#C8C0A8;
+  --chalk-hint:#9A9080;
+  --board:#1A3A2A;
+  --board2:#1E4430;
+  --board3:#163020;
+  --gold:#FFD700;
+  --gold2:#FFC200;
+  --gold3:#E8A800;
+  --gold-pale:#FFF8D6;
+  --green-bright:#4ADE80;
+  --red-bright:#F87171;
+  --blue-bright:#60A5FA;
+  --purple-bright:#C084FC;
+  --font:'Noto Sans KR',sans-serif;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+html,body{width:100%;height:100%;overflow:hidden;background:#111;}
+
+body{
+  font-family:var(--font);
+  background:var(--board);
+  color:var(--chalk-white);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  min-height:100vh;
+  position:relative;
+}
+
+/* ── 칠판 질감 ── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px),
+    repeating-linear-gradient(90deg,transparent,transparent 3px,rgba(0,0,0,.03) 3px,rgba(0,0,0,.03) 4px);
+  pointer-events:none;z-index:0;
+}
+/* 칠판 테두리 */
+body::after{
+  content:'';position:fixed;inset:0;
+  border:18px solid #5C3A1A;
+  outline:6px solid #7A4E22;
+  box-shadow:inset 0 0 40px rgba(0,0,0,.5),0 0 0 4px #3A2008;
+  pointer-events:none;z-index:200;
+  border-radius:4px;
+}
+
+/* ── 분필 먼지 파티클 ── */
+.chalk-dust{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  pointer-events:none;z-index:1;overflow:hidden;
+}
+.dust{
+  position:absolute;border-radius:50%;
+  background:rgba(245,240,232,.15);
+  animation:dustFloat var(--dd,8s) ease-in-out infinite var(--ddl,0s);
+}
+@keyframes dustFloat{
+  0%{transform:translateY(0) translateX(0);opacity:0;}
+  20%{opacity:1;}
+  80%{opacity:.3;}
+  100%{transform:translateY(-80px) translateX(var(--dx,20px));opacity:0;}
+}
+
+/* ── 공통 화면 ── */
+.screen{display:none;position:relative;z-index:10;width:100%;max-width:1100px;padding:0 2rem;}
+.screen.active{display:flex;flex-direction:column;align-items:center;}
+@keyframes chalkIn{
+  from{opacity:0;transform:translateY(20px);}
+  to{opacity:1;transform:translateY(0);}
+}
+.screen.active{animation:chalkIn .4s ease;}
+
+/* ══════════════════════════════════
+   TITLE SCREEN
+══════════════════════════════════ */
+#s-title{gap:1.2rem;text-align:center;justify-content:center;min-height:100vh;}
+
+/* 금색 종 SVG 래퍼 */
+.bell-wrap{
+  position:relative;
+  width:160px;height:160px;
+  margin:0 auto;
+  animation:bellSway 3s ease-in-out infinite;
+  filter:drop-shadow(0 4px 20px rgba(255,215,0,.5));
+}
+@keyframes bellSway{
+  0%,100%{transform:rotate(-8deg);}
+  50%{transform:rotate(8deg);}
+}
+
+.title-chalk{
+  font-size:clamp(2.4rem,5vw,4rem);
+  font-weight:900;
+  color:var(--chalk-white);
+  line-height:1.1;
+  letter-spacing:-.02em;
+  text-shadow:2px 2px 0 rgba(0,0,0,.3),0 0 30px rgba(245,240,232,.1);
+}
+.title-gold{color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,.4),2px 2px 0 rgba(0,0,0,.3);}
+
+.title-sub{font-size:1.1rem;color:var(--chalk-dim);font-weight:400;letter-spacing:.05em;}
+
+/* 분필 밑줄 */
+.chalk-line{
+  width:60%;height:3px;background:none;margin:0 auto;
+  border-bottom:3px solid var(--chalk-dim);
+  opacity:.5;border-radius:2px;
+}
+
+.chapter-pills{
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
+  max-width:700px;
+}
+.ch-pill{
+  background:rgba(245,240,232,.08);
+  border:1.5px solid rgba(245,240,232,.2);
+  border-radius:50px;
+  padding:.5rem 1.2rem;
+  font-size:.9rem;font-weight:500;
+  color:var(--chalk-dim);
+  letter-spacing:.03em;
+}
+.ch-pill .num{color:var(--gold);font-weight:700;margin-right:4px;}
+
+.start-btn{
+  padding:1.1rem 3.5rem;
+  background:var(--gold);
+  color:#1A0A00;
+  border:none;border-radius:50px;
+  font-size:1.25rem;font-weight:900;
+  cursor:pointer;font-family:var(--font);
+  transition:all .15s;
+  box-shadow:0 4px 20px rgba(255,215,0,.35),inset 0 1px 0 rgba(255,255,255,.3);
+  letter-spacing:.02em;
+}
+.start-btn:hover{background:var(--gold2);transform:translateY(-3px);box-shadow:0 8px 28px rgba(255,215,0,.45);}
+
+/* ══════════════════════════════════
+   QUIZ SCREEN
+══════════════════════════════════ */
+#s-quiz{gap:1rem;min-height:100vh;justify-content:center;}
+
+/* 상단 바 */
+.topbar{
+  display:flex;align-items:center;gap:14px;width:100%;
+  padding:.5rem 0;
+}
+.tb-badge{
+  background:rgba(255,215,0,.15);
+  border:1.5px solid rgba(255,215,0,.4);
+  border-radius:50px;padding:.35rem 1rem;
+  font-size:.85rem;font-weight:700;color:var(--gold);
+  white-space:nowrap;
+}
+.tb-badge.killer{
+  background:rgba(192,132,252,.15);
+  border-color:rgba(192,132,252,.5);
+  color:var(--purple-bright);
+}
+.progress-rail{flex:1;height:8px;background:rgba(245,240,232,.1);border-radius:50px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--gold);border-radius:50px;transition:width .6s ease;}
+.tb-count{font-size:.9rem;color:var(--chalk-dim);white-space:nowrap;font-weight:500;}
+
+/* 문제 카드 */
+.q-card{
+  width:100%;
+  background:rgba(245,240,232,.04);
+  border:1.5px solid rgba(245,240,232,.12);
+  border-radius:20px;
+  padding:2rem 2.4rem 1.8rem;
+  position:relative;
+}
+/* 왼쪽 타입 색선 */
+.q-card::before{
+  content:'';position:absolute;left:0;top:20px;bottom:20px;
+  width:4px;border-radius:2px;
+  background:var(--gold);
+  transition:background .3s;
+}
+.q-card.killer::before{background:var(--purple-bright);}
+.q-card.short-type::before{background:var(--blue-bright);}
+
+/* 문제 번호 + 타입 */
+.q-meta{display:flex;align-items:center;gap:10px;margin-bottom:.8rem;}
+.q-num{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--gold);color:#1A0A00;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1rem;font-weight:900;flex-shrink:0;
+}
+.q-num.killer{background:var(--purple-bright);}
+.q-type-tag{
+  padding:.2rem .7rem;border-radius:50px;font-size:.78rem;font-weight:700;
+}
+.tag-mcq{background:rgba(255,215,0,.12);color:var(--gold);border:1px solid rgba(255,215,0,.3);}
+.tag-short{background:rgba(96,165,250,.12);color:var(--blue-bright);border:1px solid rgba(96,165,250,.3);}
+.tag-killer{background:rgba(192,132,252,.12);color:var(--purple-bright);border:1px solid rgba(192,132,252,.3);}
+
+/* 문제 텍스트 */
+.q-text{
+  font-size:clamp(1.15rem,2.2vw,1.45rem);
+  font-weight:700;line-height:1.55;
+  color:var(--chalk-white);
+  margin-bottom:1rem;
+}
+/* 문제 안 보조 문장 (이탤릭 분필색) */
+.q-sub{
+  display:block;
+  margin-top:.5rem;
+  font-size:1.1rem;font-weight:400;
+  color:var(--chalk-dim);font-style:italic;
+}
+/* 어법 오류 문장 박스 */
+.err-sent{
+  background:rgba(245,240,232,.06);
+  border-left:3px solid rgba(192,132,252,.5);
+  border-radius:0 12px 12px 0;
+  padding:1rem 1.2rem;
+  font-size:1.1rem;line-height:1.9;
+  margin-bottom:1rem;color:var(--chalk-white);
+}
+.ul-word{
+  color:#FDE68A;font-weight:700;
+  text-decoration:underline;text-underline-offset:4px;
+  text-decoration-color:rgba(253,230,138,.5);
+}
+
+/* 선택지 */
+.choices{
+  display:grid;grid-template-columns:1fr 1fr;gap:12px;
+  margin-top:.8rem;
+}
+.choice{
+  background:rgba(245,240,232,.06);
+  border:1.5px solid rgba(245,240,232,.15);
+  border-radius:14px;
+  padding:.9rem 1.1rem;
+  font-size:1rem;font-weight:500;
+  color:var(--chalk-white);
+  display:flex;align-items:flex-start;gap:10px;
+  line-height:1.45;
+  transition:all .2s;
+}
+.choice-num{
+  font-size:1.1rem;font-weight:700;
+  color:rgba(245,240,232,.4);flex-shrink:0;
+  transition:color .2s;
+}
+/* 정답 공개 후 */
+.choice.revealed-correct{
+  background:rgba(74,222,128,.15);
+  border-color:var(--green-bright);
+}
+.choice.revealed-correct .choice-num{color:var(--green-bright);}
+.choice.revealed-wrong{
+  background:rgba(248,113,113,.08);
+  border-color:rgba(248,113,113,.3);
+  opacity:.55;
+}
+
+/* 주관식 답 칸 (비어있는 분필줄 느낌) */
+.short-blank{
+  margin-top:.8rem;
+  border-bottom:2.5px dashed rgba(245,240,232,.25);
+  padding:.7rem 0;
+  font-size:1.1rem;color:rgba(245,240,232,.25);
+  font-style:italic;letter-spacing:.05em;
+}
+
+/* 정답 공개 박스 */
+.reveal-box{
+  display:none;
+  margin-top:1rem;
+  background:rgba(74,222,128,.1);
+  border:1.5px solid rgba(74,222,128,.35);
+  border-radius:14px;
+  padding:1rem 1.3rem;
+  animation:chalkIn .35s ease;
+}
+.reveal-box.show{display:block;}
+.reveal-ans{
+  font-size:1.3rem;font-weight:900;
+  color:var(--green-bright);
+  margin-bottom:.35rem;
+}
+.reveal-ans .ans-label{font-size:.85rem;font-weight:500;color:rgba(74,222,128,.7);margin-right:8px;}
+.reveal-exp{font-size:.9rem;color:var(--chalk-dim);line-height:1.55;}
+
+/* 하단 버튼 행 */
+.btn-row{
+  display:flex;gap:12px;width:100%;justify-content:flex-end;
+  margin-top:.4rem;
+}
+.btn-reveal{
+  padding:.8rem 2rem;
+  background:var(--gold);color:#1A0A00;
+  border:none;border-radius:50px;
+  font-size:1rem;font-weight:900;
+  cursor:pointer;font-family:var(--font);
+  transition:all .15s;
+  box-shadow:0 2px 12px rgba(255,215,0,.3);
+}
+.btn-reveal:hover{background:var(--gold2);transform:translateY(-2px);}
+.btn-reveal:disabled{background:rgba(245,240,232,.1);color:rgba(245,240,232,.3);cursor:default;transform:none;box-shadow:none;}
+.btn-next{
+  padding:.8rem 2rem;
+  background:rgba(245,240,232,.08);
+  border:1.5px solid rgba(245,240,232,.2);
+  border-radius:50px;
+  font-size:1rem;font-weight:700;color:var(--chalk-white);
+  cursor:pointer;font-family:var(--font);
+  transition:all .15s;
+  display:none;
+}
+.btn-next.show{display:block;}
+.btn-next:hover{background:rgba(245,240,232,.15);border-color:rgba(245,240,232,.35);}
+
+/* ══════════════════════════════════
+   RESULT SCREEN
+══════════════════════════════════ */
+#s-result{gap:1.4rem;text-align:center;min-height:100vh;justify-content:center;}
+
+.res-bell{
+  font-size:72px;line-height:1;
+  animation:bellSway 2s ease-in-out infinite;
+  filter:drop-shadow(0 4px 20px rgba(255,215,0,.5));
+}
+.res-title{font-size:2rem;font-weight:900;color:var(--gold);}
+.res-score{font-size:4rem;font-weight:900;color:var(--chalk-white);}
+.res-score span{font-size:1.4rem;font-weight:400;color:var(--chalk-dim);}
+.res-grade{font-size:1.2rem;font-weight:500;color:var(--chalk-dim);}
+.res-dots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:600px;}
+.res-dot{
+  width:36px;height:36px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.78rem;font-weight:700;
+}
+.res-dot.ok{background:rgba(74,222,128,.2);color:var(--green-bright);border:1.5px solid var(--green-bright);}
+.res-dot.ng{background:rgba(248,113,113,.15);color:var(--red-bright);border:1.5px solid rgba(248,113,113,.4);}
+.res-dot.ref{background:rgba(96,165,250,.15);color:var(--blue-bright);border:1.5px solid rgba(96,165,250,.4);}
+
+.res-btns{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.res-btn{
+  padding:.85rem 2rem;border-radius:50px;
+  font-size:1rem;font-weight:700;cursor:pointer;border:none;
+  font-family:var(--font);transition:all .15s;
+}
+.res-btn.primary{background:var(--gold);color:#1A0A00;}
+.res-btn.secondary{background:rgba(245,240,232,.08);color:var(--chalk-white);border:1.5px solid rgba(245,240,232,.2);}
+.res-btn:hover{transform:translateY(-2px);filter:brightness(1.1);}
+
+/* confetti */
+.cp{
+  position:fixed;pointer-events:none;z-index:999;
+  border-radius:2px;
+  animation:cpFall var(--cd,2.5s) ease-in var(--cl,0s) forwards;
+}
+@keyframes cpFall{
+  0%{transform:translateY(-20px) rotate(0deg);opacity:1;}
+  100%{transform:translateY(110vh) rotate(780deg);opacity:0;}
+}
+
+/* 분필 글씨 효과 */
+@keyframes chalkWrite{
+  from{clip-path:inset(0 100% 0 0);}
+  to{clip-path:inset(0 0% 0 0);}
+}
+
+/* 반응형 */
+@media(max-width:640px){
+  .choices{grid-template-columns:1fr;}
+  body::after{border-width:10px;}
+  .q-card{padding:1.4rem 1.2rem 1.2rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- 분필 먼지 -->
+<div class="chalk-dust" id="chalk-dust"></div>
+
+<!-- ▶ 타이틀 -->
+<div id="s-title" class="screen active">
+
+  <!-- 금색 종 SVG 일러스트 -->
+  <div class="bell-wrap">
+    <svg viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg" width="160" height="160">
+      <!-- 종 줄/고리 -->
+      <rect x="73" y="8" width="14" height="22" rx="7" fill="#C8960A"/>
+      <ellipse cx="80" cy="8" rx="10" ry="7" fill="#E8A800"/>
+      <ellipse cx="80" cy="8" rx="6" ry="4" fill="#FFD700"/>
+      <!-- 종 몸체 그라데이션 느낌 (단색 레이어) -->
+      <path d="M80 28 C50 28 28 55 24 90 L22 112 C22 118 26 122 32 122 L128 122 C134 122 138 118 138 112 L136 90 C132 55 110 28 80 28Z" fill="#C8960A"/>
+      <path d="M80 28 C52 28 30 54 26 88 L24 110 C24 116 28 120 34 120 L126 120 C132 120 136 116 136 110 L134 88 C130 54 108 28 80 28Z" fill="#E8A800"/>
+      <path d="M80 30 C54 30 34 55 30 87 L28 108 C28 114 32 118 38 118 L122 118 C128 118 132 114 132 108 L130 87 C126 55 106 30 80 30Z" fill="#FFD700"/>
+      <!-- 하이라이트 -->
+      <path d="M55 45 C58 38 65 33 74 31" stroke="#FFF8B0" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+      <!-- 종 테두리 하단 -->
+      <path d="M18 120 Q80 132 142 120" stroke="#C8960A" stroke-width="8" stroke-linecap="round" fill="none"/>
+      <path d="M20 122 Q80 136 140 122" stroke="#E8A800" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <!-- 클래퍼(추) -->
+      <ellipse cx="80" cy="134" rx="10" ry="12" fill="#C8960A"/>
+      <ellipse cx="80" cy="133" rx="8" ry="10" fill="#E8A800"/>
+      <ellipse cx="80" cy="132" rx="5" ry="6" fill="#FFD700"/>
+      <!-- 종 리벳 -->
+      <circle cx="48" cy="85" r="4" fill="#C8960A"/>
+      <circle cx="112" cy="85" r="4" fill="#C8960A"/>
+      <circle cx="80" cy="110" r="4" fill="#C8960A"/>
+      <!-- 반짝임 별 -->
+      <g opacity=".9">
+        <path d="M138 38 L140 44 L146 44 L141 48 L143 54 L138 50 L133 54 L135 48 L130 44 L136 44Z" fill="#FFD700"/>
+        <path d="M20 55 L21.5 59.5 L26 59.5 L22.5 62 L24 66.5 L20 64 L16 66.5 L17.5 62 L14 59.5 L18.5 59.5Z" fill="#FFD700" opacity=".7"/>
+      </g>
+    </svg>
+  </div>
+
+  <div class="title-chalk"><span class="title-gold">골든벨</span> 리뷰</div>
+  <div class="title-sub">Grammar Smart 2 · Ch.01~05</div>
+  <div class="chalk-line"></div>
+
+  <div class="chapter-pills">
+    <div class="ch-pill"><span class="num">01</span>문장의 형식</div>
+    <div class="ch-pill"><span class="num">02</span>조동사</div>
+    <div class="ch-pill"><span class="num">03</span>비교</div>
+    <div class="ch-pill"><span class="num">04</span>수동태</div>
+    <div class="ch-pill"><span class="num">05</span>명사·관사</div>
+    <div class="ch-pill" style="color:var(--purple-bright);border-color:rgba(192,132,252,.3)">
+      <span style="color:var(--purple-bright);font-weight:700;margin-right:4px">🔥</span>킬러 문항 포함
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startGame()">🔔 골든벨 시작</button>
+
+</div>
+
+<!-- ▶ 문제 -->
+<div id="s-quiz" class="screen">
+  <div class="topbar">
+    <div class="tb-badge" id="tb-chapter">Ch.01</div>
+    <div class="progress-rail"><div class="progress-fill" id="pb" style="width:0%"></div></div>
+    <div class="tb-count" id="tb-count">1 / 50</div>
+  </div>
+  <div class="q-card" id="q-card"></div>
+  <div class="btn-row">
+    <button class="btn-reveal" id="btn-reveal" onclick="revealAnswer()">🔔 정답 공개</button>
+    <button class="btn-next show" id="btn-next" onclick="nextQ()" style="display:none">다음 문제 →</button>
+  </div>
+</div>
+
+<!-- ▶ 결과 -->
+<div id="s-result" class="screen">
+  <div class="res-bell">🔔</div>
+  <div class="res-title" id="res-title">결과</div>
+  <div class="res-score" id="res-score">0<span> / 50</span></div>
+  <div class="res-grade" id="res-grade"></div>
+  <div class="res-dots" id="res-dots"></div>
+  <div class="res-btns">
+    <button class="res-btn primary" onclick="startGame()">🔄 다시 시작</button>
+    <button class="res-btn secondary" onclick="showScreen('s-title')">처음으로</button>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────
+// 분필 먼지 파티클
+// ────────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('chalk-dust');
+  for(let i=0;i<30;i++){
+    const d=document.createElement('div');
+    d.className='dust';
+    const s=Math.random()*4+2;
+    d.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;top:${60+Math.random()*40}%;--dd:${6+Math.random()*8}s;--ddl:${Math.random()*8}s;--dx:${(Math.random()-.5)*40}px;`;
+    c.appendChild(d);
+  }
+})();
+
+// ────────────────────────────────────────────────────────
+// 문제 데이터
+// ────────────────────────────────────────────────────────
+// 기본판 위주 + 킬러 문항 (문장형식/비교/명사관사)
+const QUESTIONS = [
+
+// ── Ch.01 문장의 형식 (기본 8 + 킬러 2) ──────────────────
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"다음 중 문장의 형식이 나머지와 다른 것은?",
+ ch_opts:["① She became a doctor.","② He looks tired.","③ The sun rises in the east.","④ It smells delicious."],
+ a:2, ae:"③은 1형식(S+V). 나머지 ①②④는 모두 2형식(S+V+주격보어)."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 것은?\nShe _____ a nurse at the local hospital.",
+ ch_opts:["① is","② looks","③ goes","④ arrives"],
+ a:0, ae:"be동사 2형식: S+V+주격보어(명사). 주격보어 자리에 명사가 왔으므로 ①."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"다음 중 올바른 문장은?",
+ ch_opts:["① He arrived at Seoul by bus.","② She reached to the top.","③ They discussed about the issue.","④ He entered into the room."],
+ a:0, ae:"arrive는 자동사로 at과 함께 씀(①). reach/discuss/enter는 전치사 없이 목적어를 바로 취하는 타동사."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"4형식→3형식 전환 시 알맞은 전치사는?\nShe bought me a gift. → She bought a gift ___ me.",
+ ch_opts:["① to","② for","③ of","④ from"],
+ a:1, ae:"buy는 3형식 전환 시 for를 씀. give/send/tell/show → to, make/buy/cook/find → for."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"목적격 보어(O.C)에 해당하는 것은?\nThey elected him president.",
+ ch_opts:["① They","② elected","③ him","④ president"],
+ a:3, ae:"5형식: S(They)+V(elected)+O(him)+O.C(president). president가 him을 보충 설명."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 것은?\nI heard someone _____ in the next room.",
+ ch_opts:["① cried","② to cry","③ crying","④ cry to"],
+ a:2, ae:"지각동사(hear)+목적어+현재분사(진행 강조). 원형부정사도 가능하지만 ③이 더 자연스럽다."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"short",
+ q:"다음 문장의 형식 번호를 쓰시오.\nMy father made me a sandwich.",
+ a:"4형식", ae:"S(My father)+V(made)+I.O(me)+D.O(a sandwich). 간접목적어+직접목적어를 갖는 4형식."},
+
+{ch:1,topic:"문장의 형식",killer:false,t:"short",
+ q:"4형식을 3형식으로 바꿀 때 빈칸을 채우시오.\nHe taught us English. → He taught English ___ us.",
+ a:"to", ae:"teach는 3형식 전환 시 to를 씀(give, send, teach, tell, show, lend, write 등)."},
+
+// 킬러 ①
+{ch:1,topic:"문장의 형식",killer:true,t:"mcq",
+ q:"어법상 틀린 것은?",
+ ch_opts:["① The news made us to shout.","② She had her hair cut yesterday.","③ I saw him enter the building.","④ They found the room empty."],
+ a:0, ae:"make는 사역동사 → 목적격 보어로 원형부정사. to shout → shout으로 고쳐야 함. ②have+목적어+p.p.(수동관계), ③see+목적어+원형, ④find+목적어+형용사 모두 올바름."},
+
+// 킬러 ②
+{ch:1,topic:"문장의 형식",killer:true,t:"mcq",
+ q:"다음 중 문장의 형식이 나머지와 다른 것은?",
+ ch_opts:["① She made him angry.","② They elected her captain.","③ I saw him cross the street.","④ He gave me a book."],
+ a:3, ae:"④는 4형식(S+V+I.O+D.O). ①②③은 5형식(S+V+O+O.C). ①형용사 보어, ②명사 보어, ③원형부정사 보어."},
+
+// ── Ch.02 조동사 (기본 8) ──────────────────────────────
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 것은?\nYou ___ bring an umbrella. The weather forecast says it will be sunny all day.",
+ ch_opts:["① must not","② don't have to","③ cannot","④ had better"],
+ a:1, ae:"날씨가 맑을 예정이므로 우산을 가져올 필요가 없다(불필요). don't have to = ~할 필요 없다. must not = 금지(강한 의미), cannot = 불가능."},
+
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"의미가 가장 가까운 것은?\nYou must finish this report by noon.",
+ ch_opts:["① You may finish this report by noon.","② You have to finish this report by noon.","③ You used to finish this report by noon.","④ You will finish this report by noon."],
+ a:1, ae:"must(의무) = have to. 둘 다 강한 의무 표현으로 교체 가능. ①may = 허가·추측, ③used to = 과거 습관, ④will = 미래."},
+
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"다음 중 must의 쓰임이 나머지와 다른 것은?",
+ ch_opts:["① You must wear a seatbelt.","② Students must submit work by Friday.","③ He must be very tired now.","④ We must follow the school rules."],
+ a:2, ae:"③ must = 강한 추측(~임에 틀림없다). ①②④ must = 의무(~해야 한다)."},
+
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"빈칸에 알맞지 않은 것은?\nYou ___ see a doctor soon.",
+ ch_opts:["① should","② had better","③ must","④ would"],
+ a:3, ae:"충고/권유 맥락에 would는 어울리지 않음. should/had better/must는 모두 권유·충고·의무 표현으로 가능."},
+
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"may가 허가의 의미로 쓰인 것은?",
+ ch_opts:["① It may rain tomorrow.","② May I use your pen?","③ She may be tired now.","④ They may not come."],
+ a:1, ae:"② May I ~? = '~해도 될까요?'(허가). ①③④는 모두 추측(~일지도 모른다)."},
+
+{ch:2,topic:"조동사",killer:false,t:"mcq",
+ q:"올바르게 쓰인 문장은?",
+ ch_opts:["① I will like to visit Paris.","② Would you help me, please?","③ She wills come tomorrow.","④ You will can do it."],
+ a:1, ae:"② Would you ~? = 정중한 요청. ① would like to가 맞음, ③ 조동사에 s 불가, ④ 조동사 2개 연속 불가."},
+
+{ch:2,topic:"조동사",killer:false,t:"short",
+ q:"틀린 부분을 바르게 고쳐 쓰시오.\nHe must be leaves now.",
+ a:"He must leave now.", ae:"조동사(must) 뒤에는 반드시 동사원형. be leaves → leave."},
+
+{ch:2,topic:"조동사",killer:false,t:"short",
+ q:"같은 뜻이 되도록 빈칸을 채우시오.\nYou are not allowed to park here. = You ___ not park here.",
+ a:"must", ae:"must not = '~하면 안 된다'(강한 금지) = be not allowed to."},
+
+// ── Ch.03 비교 (기본 6 + 킬러 2) ───────────────────────
+{ch:3,topic:"비교",killer:false,t:"mcq",
+ q:"비교급을 강조할 때 쓸 수 없는 것은?",
+ ch_opts:["① much","② even","③ very","④ far"],
+ a:2, ae:"very는 원급(형용사/부사) 강조. 비교급 강조는 much/still/even/far/a lot을 씀."},
+
+{ch:3,topic:"비교",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 것은?\nThis building is _____ tall _____ the Eiffel Tower.",
+ ch_opts:["① as – as","② more – than","③ the – of","④ less – as"],
+ a:0, ae:"as+원급+as = '~만큼 …한'(동등 비교). '에펠탑만큼 높다'는 문맥."},
+
+{ch:3,topic:"비교",killer:false,t:"mcq",
+ q:"최상급이 올바르게 쓰인 문장은?",
+ ch_opts:["① She is most beautiful girl in class.","② He is one of the tallest student.","③ This is the most exciting movie I've ever seen.","④ Mt. Everest is highest mountain in the world."],
+ a:2, ae:"③ the most+형용사+that+S+have ever p.p. = 완벽한 최상급 구문. ①the 빠짐, ②students(복수), ④the 빠짐."},
+
+{ch:3,topic:"비교",killer:false,t:"mcq",
+ q:"어법상 틀린 것은?",
+ ch_opts:["① The more you study, the smarter you become.","② He ran faster and faster.","③ She is more tall than her sister.","④ This is one of the best movies I've seen."],
+ a:2, ae:"tall은 1음절 → 비교급은 taller. more tall(×) → taller(○)."},
+
+{ch:3,topic:"비교",killer:false,t:"short",
+ q:"최상급 문장으로 바꿀 때 빈칸을 채우시오.\nNo other city in Korea is as large as Seoul.\n= Seoul is _____ _____ city in Korea.",
+ a:"the largest", ae:"No other ~ as+원급+as A = A is the+최상급. 원급비교 → 최상급 전환."},
+
+{ch:3,topic:"비교",killer:false,t:"short",
+ q:"주어진 단어의 비교급 – 최상급을 쓰시오.\nbad → _____ – _____",
+ a:"worse – worst", ae:"bad의 불규칙 변화: bad – worse – worst."},
+
+// 킬러 ①
+{ch:3,topic:"비교",killer:true,t:"mcq",
+ q:"두 문장의 의미가 같도록 빈칸에 알맞은 것은?\nJane is smarter than any other student in class.\n= _____ student in class is as smart as Jane.",
+ ch_opts:["① Any","② Every","③ No other","④ Some"],
+ a:2, ae:"'어떤 다른 학생도 Jane만큼 똑똑하지 않다' = No other+단수명사+is as+원급+as. 최상급 ↔ 원급비교 전환."},
+
+// 킬러 ②
+{ch:3,topic:"비교",killer:true,t:"mcq",
+ q:"밑줄 친 부분 중 어법상 틀린 것은?\nThe <u>① more</u> the internet <u>② develops</u>, the <u>③ much</u> information <u>④ people</u> can access.",
+ ch_opts:["① more","② develops","③ much","④ people"],
+ a:2, ae:"'the+비교급, the+비교급' 구문에서 ③ much는 비교급이 아님. much → more로 고쳐야 함. 비교급 구문(the+비교급)에서는 more를 써야 함."},
+
+// ── Ch.04 수동태 (기본 8) ──────────────────────────────
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"수동태로 바꿀 때 빈칸에 알맞은 것은?\nThey built this bridge in 1990.\n→ This bridge _____ in 1990.",
+ ch_opts:["① built","② was built","③ is built","④ were built"],
+ a:1, ae:"과거 수동태: was/were+p.p. 주어 this bridge는 단수 → was built."},
+
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"수동태로 바꿀 수 없는 것은?",
+ ch_opts:["① She wrote a letter.","② He resembles his father.","③ They sent her a package.","④ The dog bit the boy."],
+ a:1, ae:"resemble(닮다)은 상태를 나타내는 타동사로 수동태 불가. become/have/resemble 등."},
+
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 것은?\nEnglish _____ all over the world.",
+ ch_opts:["① speaks","② is spoken","③ was speaking","④ has spoken"],
+ a:1, ae:"현재 수동태: is/am/are+p.p. '영어는 전 세계에서 사용된다.'"},
+
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"어법상 올바른 문장은?",
+ ch_opts:["① The homework didn't finished yet.","② Was the window broken by Tom?","③ The letter was wrote by her.","④ They were please with our performance."],
+ a:1, ae:"의문문 수동태: be동사+주어+p.p.~? ①didn't→wasn't, ③wrote→written, ④please→pleased."},
+
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 전치사가 나머지와 다른 것은?",
+ ch_opts:["① She was surprised ___ the news.","② The table was covered ___ dust.","③ He was disappointed ___ the result.","④ We were shocked ___ his behavior."],
+ a:1, ae:"② be covered with = ~으로 덮여 있다(with). ①③④ be surprised/disappointed/shocked at. ②만 with, 나머지는 at."},
+
+{ch:4,topic:"수동태",killer:false,t:"mcq",
+ q:"진행형 수동태 문장으로 알맞은 것은?",
+ ch_opts:["① The car is being repaired now.","② The car was being repair now.","③ The car is been repaired now.","④ The car being repaired now."],
+ a:0, ae:"진행형 수동태: be동사+being+p.p. 현재진행 수동: is being repaired."},
+
+{ch:4,topic:"수동태",killer:false,t:"short",
+ q:"능동태를 수동태로 바꾸시오.\nMy mom makes this cake.\n→ This cake _____ _____ by my mom.",
+ a:"is made", ae:"현재 수동태: is/am/are+p.p. make → made."},
+
+{ch:4,topic:"수동태",killer:false,t:"short",
+ q:"빈칸에 알맞은 전치사를 쓰시오.\nShe is interested _____ classical music.",
+ a:"in", ae:"be interested in = '~에 관심이 있다'. 수동태 관용표현 중 by 대신 in을 사용."},
+
+// ── Ch.05 명사·관사 (기본 6 + 킬러 2) ──────────────────
+{ch:5,topic:"명사·관사",killer:false,t:"mcq",
+ q:"항상 복수 취급하는 명사는?",
+ ch_opts:["① news","② mathematics","③ scissors","④ economics"],
+ a:2, ae:"scissors(가위)는 항상 복수형이며 복수 취급. news/mathematics/economics는 형태는 -s이지만 단수 취급."},
+
+{ch:5,topic:"명사·관사",killer:false,t:"mcq",
+ q:"빈칸에 알맞은 관사는?\nShe plays _____ violin in the school orchestra.",
+ ch_opts:["① a","② an","③ the","④ X(없음)"],
+ a:2, ae:"악기 이름 앞에는 the를 씀. play the piano/violin/guitar. (cf. 스포츠 이름 앞은 관사 없음)"},
+
+{ch:5,topic:"명사·관사",killer:false,t:"mcq",
+ q:"어법상 올바른 문장은?",
+ ch_opts:["① I need two glass of water.","② She brought three cup of coffee.","③ He bought two slices of pizza.","④ They ordered five bottle of juice."],
+ a:2, ae:"단위명사는 수에 따라 복수형으로. two slices of pizza (O). ①glass→glasses, ②cup→cups, ④bottle→bottles."},
+
+{ch:5,topic:"명사·관사",killer:false,t:"mcq",
+ q:"관사의 쓰임이 어법상 틀린 것은?",
+ ch_opts:["① He is an honest man.","② She goes to bed at 10 every night.","③ The Amazon is the longest river in South America.","④ He is an university student."],
+ a:3, ae:"university는 모음자로 시작하지만 /j/ 발음 → a university. an university(×). ① an honest(h 묵음, /ɒ/ 발음 → an 맞음), ② go to bed(본래 목적, 관사 생략 맞음), ③ 강 이름 앞 the 맞음."},
+
+{ch:5,topic:"명사·관사",killer:false,t:"short",
+ q:"빈칸에 알맞은 관사(a/an/the/X)를 쓰시오.\nShe had _____ breakfast with her family.",
+ a:"X", ae:"식사 이름 앞에는 관사 생략. have breakfast/lunch/dinner. (cf. 형용사 수식 시: a nice breakfast)"},
+
+{ch:5,topic:"명사·관사",killer:false,t:"short",
+ q:"빈칸에 알맞은 수량 표현을 쓰시오.\nShe drinks two _____ of coffee every morning.",
+ a:"cups / glasses", ae:"물질명사 수량: 수사+단위명사(복수)+of+물질명사. two cups of coffee / two glasses of coffee 모두 가능."},
+
+// 킬러 ①
+{ch:5,topic:"명사·관사",killer:true,t:"mcq",
+ q:"밑줄 친 부분 중 어법상 틀린 것은?\nShe gave me <u>① some</u> <u>② advices</u> about <u>③ the job interview</u>. It was <u>④ one of the best</u> talks I'd ever had.",
+ ch_opts:["① some","② advices","③ the job interview","④ one of the best"],
+ a:1, ae:"advice는 불가산명사 → 복수형(advices) 불가. some advice 또는 a piece of advice로 써야 함."},
+
+// 킬러 ②
+{ch:5,topic:"명사·관사",killer:true,t:"mcq",
+ q:"빈칸에 들어갈 말로 모두 알맞은 것은?\n• He is ___ honest man.\n• The train runs 200 km ___ hour.",
+ ch_opts:["① a / a","② an / an","③ an / a","④ a / an"],
+ a:1, ae:"honest = h가 묵음, /ɒ/ 모음 발음 시작 → an honest. hour = h가 묵음, /aʊ/ 모음 발음 시작 → an hour. 둘 다 an이므로 ②."},
+
+];
+
+// ────────────────────────────────────────────────────────
+// 게임 상태
+// ────────────────────────────────────────────────────────
+let idx=0;
+let results=[];
+let revealed=false;
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startGame(){
+  idx=0; results=[];
+  showScreen('s-quiz');
+  render();
+}
+
+// ────────────────────────────────────────────────────────
+// 문제 렌더
+// ────────────────────────────────────────────────────────
+function render(){
+  revealed=false;
+  const q=QUESTIONS[idx];
+  const total=QUESTIONS.length;
+
+  // 진행 상태
+  document.getElementById('tb-chapter').textContent=`Ch.0${q.ch} ${q.topic}`;
+  document.getElementById('tb-chapter').className='tb-badge'+(q.killer?' killer':'');
+  document.getElementById('pb').style.width=Math.round(idx/total*100)+'%';
+  document.getElementById('tb-count').textContent=`${idx+1} / ${total}`;
+
+  // 버튼 리셋
+  const btnR=document.getElementById('btn-reveal');
+  const btnN=document.getElementById('btn-next');
+  btnR.disabled=false; btnR.style.display='';
+  btnN.style.display='none';
+
+  // 카드 렌더
+  const card=document.getElementById('q-card');
+  card.className='q-card'+(q.killer?' killer':'')+(q.t==='short'?' short-type':'');
+
+  const lines=q.q.split('\n');
+  const mainQ=lines[0];
+  const subQ=lines.slice(1).join('\n');
+
+  const typeTag=q.killer
+    ?'<span class="q-type-tag tag-killer">🔥 킬러</span>'
+    :(q.t==='short'?'<span class="q-type-tag tag-short">주관식</span>':'<span class="q-type-tag tag-mcq">객관식</span>');
+
+  const numStyle=q.killer?'class="q-num killer"':'class="q-num"';
+
+  let html=`
+    <div class="q-meta">
+      <div ${numStyle}>${idx+1}</div>
+      ${typeTag}
+    </div>
+    <div class="q-text">${esc(mainQ)}${subQ?`<span class="q-sub">${esc(subQ)}</span>`:''}
+    </div>`;
+
+  // 선택지 (객관식)
+  if(q.t==='mcq'){
+    // 어법오류 문장형 처리 (밑줄 표시)
+    const hasUl=q.ch_opts&&q.ch_opts[0]&&!q.ch_opts[0].startsWith('①');
+    html+='<div class="choices">';
+    (q.ch_opts||[]).forEach((c,i)=>{
+      const hasNum=/^[①②③④]/.test(c);
+      const label=hasNum?'':['①','②','③','④'][i]+'  ';
+      html+=`<div class="choice" id="c${i}"><span class="choice-num">${['①','②','③','④'][i]}</span><span>${esc(hasNum?c.replace(/^[①②③④]\s*/,''):c)}</span></div>`;
+    });
+    html+='</div>';
+  } else {
+    html+=`<div class="short-blank">→ &nbsp;&nbsp;정답: ___________________________</div>`;
+  }
+
+  // 정답 공개 박스 (숨김)
+  html+=`<div class="reveal-box" id="reveal-box">
+    <div class="reveal-ans"><span class="ans-label">정답</span>${
+      q.t==='mcq'
+        ?`${['①','②','③','④'][q.a]}  ${esc((q.ch_opts[q.a]||'').replace(/^[①②③④]\s*/,''))}`
+        :esc(q.a)
+    }</div>
+    <div class="reveal-exp">${esc(q.ae)}</div>
+  </div>`;
+
+  card.innerHTML=html;
+}
+
+function revealAnswer(){
+  if(revealed) return;
+  revealed=true;
+  const q=QUESTIONS[idx];
+
+  // 선택지 색 표시 (객관식)
+  if(q.t==='mcq'){
+    (q.ch_opts||[]).forEach((_,i)=>{
+      const el=document.getElementById('c'+i);
+      if(!el) return;
+      if(i===q.a) el.classList.add('revealed-correct');
+      else el.classList.add('revealed-wrong');
+    });
+  }
+
+  // 정답 박스 표시
+  document.getElementById('reveal-box').classList.add('show');
+
+  // 버튼 전환
+  document.getElementById('btn-reveal').disabled=true;
+  const btnN=document.getElementById('btn-next');
+  btnN.style.display='block';
+
+  // 결과 기록 (선생님 진행용이므로 모두 '확인완료'로 처리)
+  results.push('ref');
+}
+
+function nextQ(){
+  idx++;
+  if(idx>=QUESTIONS.length){ showResult(); return; }
+  render();
+}
+
+// ────────────────────────────────────────────────────────
+// 결과
+// ────────────────────────────────────────────────────────
+function showResult(){
+  const total=QUESTIONS.length;
+  document.getElementById('res-title').textContent='전체 완료!';
+  document.getElementById('res-score').innerHTML=`${total}<span> 문제</span>`;
+  document.getElementById('res-grade').textContent='수고하셨습니다! 📣 모든 문제를 완료했어요.';
+
+  let dots='';
+  QUESTIONS.forEach((q,i)=>{
+    const label=q.killer?'🔥':`${i+1}`;
+    dots+=`<div class="res-dot ref" title="Ch.0${q.ch}">${q.killer?'🔥':i+1}</div>`;
+  });
+  document.getElementById('res-dots').innerHTML=dots;
+  showScreen('s-result');
+  launchConfetti();
+}
+
+function launchConfetti(){
+  const colors=['#FFD700','#FFC200','#FFFFFF','#A78BFA','#4ADE80','#60A5FA'];
+  for(let i=0;i<80;i++){
+    const el=document.createElement('div');
+    el.className='cp';
+    const w=5+Math.random()*8, h=5+Math.random()*8;
+    el.style.cssText=`left:${Math.random()*100}vw;top:-20px;width:${w}px;height:${h}px;background:${colors[~~(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};--cd:${2+Math.random()*2.5}s;--cl:${Math.random()*.8}s;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),(3+Math.random())*1000);
+  }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/<u>/g,'__U_OPEN__').replace(/<\/u>/g,'__U_CLOSE__').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/__U_OPEN__/g,'<u>').replace(/__U_CLOSE__/g,'</u>').replace(/\n/g,'<br>'); }
+</script>
+</body>
+</html>
